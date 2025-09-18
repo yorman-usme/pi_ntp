@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 # Título
 st.title("Análisis de datos CSV - Medellín")
@@ -15,23 +16,108 @@ st.write("Columnas disponibles:", df.columns.tolist())
 # Vista previa
 st.dataframe(df.head(20))
 
-st.header("Contratos por tipo")
-contratos_tipo = df['Tipo de Contrato'].value_counts()
-st.bar_chart(contratos_tipo)
+st.header("Contratos por Tipo de Contrato")
+
+# Asegurarse que la columna no tenga valores nulos
+df = df.dropna(subset=["Tipo de Contrato"])
+
+# Obtener valores únicos para el selectbox
+tipos = sorted(df["Tipo de Contrato"].unique())
+tipo_seleccionado = st.selectbox("Selecciona un Tipo de Contrato:", tipos)
+
+# Filtrar datos según selección
+df_filtrado = df[df["Tipo de Contrato"] == tipo_seleccionado]
+
+# Crear pestañas
+tab1, tab2 = st.tabs(["📈 Gráfica", "📋 Tabla"])
+
+# TAB 1: Gráfica - número de contratos por entidad para el tipo seleccionado
+tab1.subheader(f"Número de contratos de tipo '{tipo_seleccionado}' por entidad")
+conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
+tab1.bar_chart(conteo_por_entidad)
+
+# TAB 2: Tabla con contratos filtrados
+tab2.subheader(f"Contratos de tipo '{tipo_seleccionado}'")
+tab2.write(f"{len(df_filtrado)} contratos encontrados")
+tab2.dataframe(df_filtrado)
 
 
-st.header("Contratos por modalidad")
-modalidad = df['Modalidad de Contratacion'].value_counts()
-st.bar_chart(modalidad)
+
+st.title("📑 Contratos por Modalidad de Contratación")
+
+# Asegurar que no haya valores nulos en la columna clave
+df = df.dropna(subset=["Modalidad de Contratacion"])
+
+# Selector de modalidad (fuera de las tabs para mejor UX)
+modalidades = sorted(df["Modalidad de Contratacion"].unique())
+modalidad_seleccionada = st.selectbox("Selecciona una modalidad:", modalidades)
+
+# Filtrar dataframe según modalidad seleccionada
+df_filtrado = df[df["Modalidad de Contratacion"] == modalidad_seleccionada]
+
+# Crear tabs
+tab1, tab2 = st.tabs(["📊 Gráfica", "📋 Tabla filtrada"])
+
+with tab1:
+    st.subheader(f"Distribución de contratos para modalidad: {modalidad_seleccionada}")
+    # Para la gráfica puedes mostrar la cantidad de contratos por alguna otra variable, 
+    # por ejemplo por "Nombre Entidad"
+    conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
+    st.bar_chart(conteo_por_entidad)
+
+with tab2:
+    st.subheader(f"Contratos para modalidad: {modalidad_seleccionada}")
+    st.write(f"{len(df_filtrado)} contratos encontrados")
+    st.dataframe(df_filtrado)
 
 
 
-st.header("Top 10 proveedores por valor total")
-top_proveedores = df.groupby('Proveedor Adjudicado')['Valor del Contrato'].sum().sort_values(ascending=False).head(10)
-st.bar_chart(top_proveedores)
+st.header("Análisis por Ciudad")
+
+# Selección de ciudad
+ciudades = sorted(df["Ciudad"].dropna().unique())
+ciudad_seleccionada = st.selectbox("Selecciona una ciudad:", ciudades)
+
+# Filtrar datos por ciudad seleccionada
+df_filtrado = df[df["Ciudad"] == ciudad_seleccionada]
+
+# Crear pestañas
+tab1, tab2 = st.tabs(["📊 Contratos por Modalidad", "📋 Tabla de contratos"])
+
+with tab1:
+    st.subheader(f"Cantidad de contratos por modalidad en {ciudad_seleccionada}")
+    conteo_modalidad = df_filtrado["Modalidad de Contratacion"].value_counts()
+    st.bar_chart(conteo_modalidad)
+
+with tab2:
+    st.subheader(f"Contratos en {ciudad_seleccionada}")
+    st.write(f"{len(df_filtrado)} contratos encontrados")
+    st.dataframe(df_filtrado)
 
 
 
-st.header("Distribución de contratos por ciudad")
-ciudades = df['Ciudad'].value_counts()
-st.bar_chart(ciudades)
+st.title("Contratos por Estado")
+
+# Asegurar que la columna "Estado Contrato" no tenga valores nulos
+df = df.dropna(subset=["Estado Contrato"])
+
+# Obtener los valores únicos para el selectbox
+estados = sorted(df["Estado Contrato"].unique())
+estado_seleccionado = st.selectbox("Selecciona un Estado de Contrato:", estados)
+
+# Filtrar los datos según el estado seleccionado
+df_filtrado = df[df["Estado Contrato"] == estado_seleccionado]
+
+# Crear pestañas
+tab1, tab2 = st.tabs(["📈 Gráfica", "📋 Tabla"])
+
+# TAB 1: Gráfica (por ejemplo, número de contratos por entidad)
+tab1.subheader(f"Número de contratos en estado '{estado_seleccionado}' por entidad")
+conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
+tab1.bar_chart(conteo_por_entidad)
+
+# TAB 2: Tabla de contratos filtrados
+tab2.subheader(f"Contratos en estado '{estado_seleccionado}'")
+tab2.write(f"{len(df_filtrado)} contratos encontrados")
+tab2.dataframe(df_filtrado)
+
