@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+
 # Título
 st.title("Análisis de datos CSV - Medellín")
 
@@ -120,4 +121,30 @@ tab1.bar_chart(conteo_por_entidad)
 tab2.subheader(f"Contratos en estado '{estado_seleccionado}'")
 tab2.write(f"{len(df_filtrado)} contratos encontrados")
 tab2.dataframe(df_filtrado)
+
+
+
+
+# Luego convertir a entero (si hay nulos, usa 'Int64')
+# df['Valor del Contrato'] = df['Valor del Contrato'].astype('Int64')
+df['Valor_limpio'] = (
+    df['Valor del Contrato']
+    .str.replace(r'[$,]', '', regex=True)  # quitar '$' y ','
+    .astype(int)                           # convertir a entero
+)
+
+
+filtro_ciudad=df["Ciudad"].unique()
+ciudades = st.multiselect(
+    "Ciudades", filtro_ciudad,
+    default=filtro_ciudad
+)
+
+filtro_1= df[["Ciudad", "Valor_limpio"]]
+filtro_c= filtro_1[filtro_1['Ciudad'].isin(ciudades)]
+
+# st.dataframe(filtro_c)
+
+# Graficar el DataFrame con un gráfico de barras
+st.bar_chart(filtro_c.set_index('Ciudad'))
 
