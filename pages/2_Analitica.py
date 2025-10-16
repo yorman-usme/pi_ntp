@@ -1,150 +1,156 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import plotly.express as px
 
+# ==============================
+# 🔷 CONFIGURACIÓN INICIAL
+# ==============================
+st.set_page_config(page_title="Análisis de Contratos Medellín", layout="wide")
 
-# Título
-st.title("Análisis de datos CSV - Medellín")
+# Título principal
+st.title("📊 Análisis de Contratación Pública - Medellín")
 
+# Descripción del proyecto
+st.info("""
+**Proyecto Integrador - Análisis de Contratación Pública en Medellín**  
+Este dashboard permite visualizar y analizar la información de contratos públicos de la ciudad de Medellín.  
+Debido al tiempo disponible, se decidió utilizar un archivo CSV como fuente de datos, en lugar de una API.
+""")
 
-df = pd.read_csv("data/medellin_20250911.csv")
+# ==============================
+# 📂 CARGA DE DATOS
+# ==============================
+try:
+    df = pd.read_csv("data/medellin_20250911.csv")
+    st.success("✅ Datos cargados correctamente.")
+except FileNotFoundError:
+    st.error("❌ No se encontró el archivo CSV. Asegúrate de que esté en la carpeta 'data/'.")
+    st.stop()
 
+# ==============================
+# 🧩 LIMPIEZA Y PREPARACIÓN
+# ==============================
+# Eliminar filas sin información clave
+df = df.dropna(subset=["Nombre Entidad", "Tipo de Contrato", "Modalidad de Contratacion", "Ciudad"])
 
-# Información general
-st.write("Número de filas y columnas:", df.shape)
-st.write("Columnas disponibles:", df.columns.tolist())
+# Limpieza del valor del contrato
+df["Valor_limpio"] = (
+    df["Valor del Contrato"]
+    .astype(str)
+    .str.replace(r"[$,]", "", regex=True)
+    .astype(float)
+)
 
-# Vista previa
-st.dataframe(df.head(20))
+# ==============================
+# 🔢 KPIs PRINCIPALES
+# ==============================
+col1, col2, col3, col4 = st.columns(4)
 
-st.header("Contratos por Tipo de Contrato")
+col1.metric("🏢 Entidades", df["Nombre Entidad"].nunique())
+col2.metric("📜 Contratos totales", len(df))
+col3.metric("💰 Valor total (COP)", f"{df['Valor_limpio'].sum():,.0f}")
+col4.metric("🏙️ Ciudades únicas", df["Ciudad"].nunique())
 
-# Asegurarse que la columna no tenga valores nulos
-df = df.dropna(subset=["Tipo de Contrato"])
+st.divider()
 
-# Obtener valores únicos para el selectbox
+# ==============================
+# 📈 ANÁLISIS VISUAL
+# ==============================
+st.header("📈 Análisis visual")
+# --- Top 10 entidades con más contratos ---
+top_entidades = (
+    df["Nombre Entidad"]
+    .value_counts()
+    .head(10)
+    .reset_index()
+)
+
+# Renombrar correctamente las columnas
+top_entidades.columns = ["Entidad", "Cantidad"]
+
+# Crear gráfico de barras
+fig1 = px.bar(
+    top_entidades,
+    x="Entidad",
+    y="Cantidad",
+    title="Top 10 entidades con más contratos",
+    labels={"Entidad": "Entidad contratante", "Cantidad": "Número de contratos"},
+)
+
+# Mostrar gráfico
+st.plotly_chart(fig1, use_container_width=True)
+
+# ==============================
+# 🔍 FILTROS INTERACTIVOS
+# ==============================
+st.header("🔍 Filtros interactivos")
+
+# Filtro por tipo de contrato
 tipos = sorted(df["Tipo de Contrato"].unique())
 tipo_seleccionado = st.selectbox("Selecciona un Tipo de Contrato:", tipos)
 
-# Filtrar datos según selección
+# Filtrar
 df_filtrado = df[df["Tipo de Contrato"] == tipo_seleccionado]
 
-# Crear pestañas
-tab1, tab2 = st.tabs(["📈 Gráfica", "📋 Tabla"])
-
-# TAB 1: Gráfica - número de contratos por entidad para el tipo seleccionado
-tab1.subheader(f"Número de contratos de tipo '{tipo_seleccionado}' por entidad")
-conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
-tab1.bar_chart(conteo_por_entidad)
-
-# TAB 2: Tabla con contratos filtrados
-tab2.subheader(f"Contratos de tipo '{tipo_seleccionado}'")
-tab2.write(f"{len(df_filtrado)} contratos encontrados")
-tab2.dataframe(df_filtrado)
-
-
-
-st.title("📑 Contratos por Modalidad de Contratación")
-
-# Asegurar que no haya valores nulos en la columna clave
-df = df.dropna(subset=["Modalidad de Contratacion"])
-
-# Selector de modalidad (fuera de las tabs para mejor UX)
-modalidades = sorted(df["Modalidad de Contratacion"].unique())
-modalidad_seleccionada = st.selectbox("Selecciona una modalidad:", modalidades)
-
-# Filtrar dataframe según modalidad seleccionada
-df_filtrado = df[df["Modalidad de Contratacion"] == modalidad_seleccionada]
-
-# Crear tabs
-tab1, tab2 = st.tabs(["📊 Gráfica", "📋 Tabla filtrada"])
+tab1, tab2 = st.tabs(["📊 Gráfica", "📋 Tabla"])
 
 with tab1:
-    st.subheader(f"Distribución de contratos para modalidad: {modalidad_seleccionada}")
-    # Para la gráfica puedes mostrar la cantidad de contratos por alguna otra variable, 
-    # por ejemplo por "Nombre Entidad"
-    conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
-    st.bar_chart(conteo_por_entidad)
+    conteo_entidad = df_filtrado["Nombre Entidad"].value_counts().head(10)
+    st.subheader(f"Top entidades con más contratos de tipo '{tipo_seleccionado}'")
+    st.bar_chart(conteo_entidad)
 
 with tab2:
-    st.subheader(f"Contratos para modalidad: {modalidad_seleccionada}")
-    st.write(f"{len(df_filtrado)} contratos encontrados")
+    st.subheader(f"Contratos de tipo '{tipo_seleccionado}'")
+    st.write(f"Total: {len(df_filtrado)} registros")
     st.dataframe(df_filtrado)
 
+st.divider()
 
+# ==============================
+# 🏙️ ANÁLISIS POR CIUDAD
+# ==============================
+st.header("🏙️ Análisis por Ciudad")
 
-st.header("Análisis por Ciudad")
+ciudades = sorted(df["Ciudad"].unique())
+ciudad_seleccionada = st.selectbox("Selecciona una Ciudad:", ciudades)
 
-# Selección de ciudad
-ciudades = sorted(df["Ciudad"].dropna().unique())
-ciudad_seleccionada = st.selectbox("Selecciona una ciudad:", ciudades)
+df_ciudad = df[df["Ciudad"] == ciudad_seleccionada]
 
-# Filtrar datos por ciudad seleccionada
-df_filtrado = df[df["Ciudad"] == ciudad_seleccionada]
+col1, col2 = st.columns(2)
 
-# Crear pestañas
-tab1, tab2 = st.tabs(["📊 Contratos por Modalidad", "📋 Tabla de contratos"])
-
-with tab1:
-    st.subheader(f"Cantidad de contratos por modalidad en {ciudad_seleccionada}")
-    conteo_modalidad = df_filtrado["Modalidad de Contratacion"].value_counts()
+with col1:
+    st.subheader(f"Modalidades más usadas en {ciudad_seleccionada}")
+    conteo_modalidad = df_ciudad["Modalidad de Contratacion"].value_counts().head(10)
     st.bar_chart(conteo_modalidad)
 
-with tab2:
-    st.subheader(f"Contratos en {ciudad_seleccionada}")
-    st.write(f"{len(df_filtrado)} contratos encontrados")
-    st.dataframe(df_filtrado)
+with col2:
+    st.subheader(f"Valor total de contratos por entidad en {ciudad_seleccionada}")
+    valor_por_entidad = (
+        df_ciudad.groupby("Nombre Entidad")["Valor_limpio"].sum().nlargest(10)
+    )
+    st.bar_chart(valor_por_entidad)
 
+st.divider()
 
+# ==============================
+# 🧠 CONCLUSIONES AUTOMÁTICAS
+# ==============================
+st.header("🧠 Conclusiones automáticas")
 
-st.title("Contratos por Estado")
+total = len(df)
+top_entidad = df["Nombre Entidad"].value_counts().idxmax()
+top_tipo = df["Tipo de Contrato"].value_counts().idxmax()
+ciudad_top = df["Ciudad"].value_counts().idxmax()
 
-# Asegurar que la columna "Estado Contrato" no tenga valores nulos
-df = df.dropna(subset=["Estado Contrato"])
+st.success(f"""
+📍 **Entidad más contratante:** {top_entidad}  
+📄 **Tipo de contrato más común:** {top_tipo}  
+🏙️ **Ciudad con más contratos:** {ciudad_top}  
+📊 **Total de contratos analizados:** {total:,}
+""")
 
-# Obtener los valores únicos para el selectbox
-estados = sorted(df["Estado Contrato"].unique())
-estado_seleccionado = st.selectbox("Selecciona un Estado de Contrato:", estados)
-
-# Filtrar los datos según el estado seleccionado
-df_filtrado = df[df["Estado Contrato"] == estado_seleccionado]
-
-# Crear pestañas
-tab1, tab2 = st.tabs(["📈 Gráfica", "📋 Tabla"])
-
-# TAB 1: Gráfica (por ejemplo, número de contratos por entidad)
-tab1.subheader(f"Número de contratos en estado '{estado_seleccionado}' por entidad")
-conteo_por_entidad = df_filtrado["Nombre Entidad"].value_counts()
-tab1.bar_chart(conteo_por_entidad)
-
-# TAB 2: Tabla de contratos filtrados
-tab2.subheader(f"Contratos en estado '{estado_seleccionado}'")
-tab2.write(f"{len(df_filtrado)} contratos encontrados")
-tab2.dataframe(df_filtrado)
-
-
-
-
-# Luego convertir a entero (si hay nulos, usa 'Int64')
-# df['Valor del Contrato'] = df['Valor del Contrato'].astype('Int64')
-df['Valor_limpio'] = (
-    df['Valor del Contrato']
-    .str.replace(r'[$,]', '', regex=True)  # quitar '$' y ','
-    .astype(int)                           # convertir a entero
-)
-
-
-filtro_ciudad=df["Ciudad"].unique()
-ciudades = st.multiselect(
-    "Ciudades", filtro_ciudad,
-    default=filtro_ciudad
-)
-
-filtro_1= df[["Ciudad", "Valor_limpio"]]
-filtro_c= filtro_1[filtro_1['Ciudad'].isin(ciudades)]
-
-# st.dataframe(filtro_c)
-
-# Graficar el DataFrame con un gráfico de barras
-st.bar_chart(filtro_c.set_index('Ciudad'))
-
+# ==============================
+# 📎 PIE DE PÁGINA
+# ==============================
+st.divider()
+st.caption("Proyecto desarrollado para análisis académico - Datos abiertos de contratación Medellín.")
