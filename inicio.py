@@ -14,7 +14,7 @@ st.subheader("Presentado por:")
 
 st.text("Yorman Ivan Usme")
 st.text("Yeferson Santamaria Holguin")
-st.text("Juan")
+st.text("Emanuel Marin Alzate")
 
 st.title("Bienvenido a nuestra aplicación")
 
